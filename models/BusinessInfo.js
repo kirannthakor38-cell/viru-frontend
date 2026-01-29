@@ -31,7 +31,9 @@ const businessInfoSchema = new mongoose.Schema({
         whatsapp: { type: String, default: '' }
     },
     images: [{
-        type: String // URL paths
+        data: Buffer,
+        contentType: String,
+        url: String
     }]
 }, {
     timestamps: true

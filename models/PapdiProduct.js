@@ -16,6 +16,13 @@ const papdiProductSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Product image is required'],
         },
+        imageData: {
+            type: Buffer,
+            select: false,
+        },
+        imageType: {
+            type: String,
+        },
         ingredients: {
             type: String,
             required: [true, 'Ingredients description is required'],

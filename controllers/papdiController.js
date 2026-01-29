@@ -1,9 +1,4 @@
 import PapdiProduct from '../models/PapdiProduct.js';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // @desc    Get all papdi products
 // @route   GET /api/papdi
@@ -34,6 +29,24 @@ export const getPapdiById = async (req, res) => {
     }
 };
 
+// @desc    Get papdi product image
+// @route   GET /api/papdi/image/:id
+// @access  Public
+export const getPapdiImage = async (req, res) => {
+    try {
+        const product = await PapdiProduct.findById(req.params.id).select('+imageData');
+
+        if (!product || !product.imageData) {
+            return res.status(404).json({ message: 'Image not found' });
+        }
+
+        res.set('Content-Type', product.imageType || 'image/jpeg');
+        res.send(product.imageData);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // @desc    Create new papdi product
 // @route   POST /api/papdi
 // @access  Private/Admin
@@ -46,16 +59,22 @@ export const createPapdi = async (req, res) => {
             return res.status(400).json({ message: 'Please upload an image' });
         }
 
-        const imagePath = `/uploads/${req.file.filename}`;
-
-        const product = await PapdiProduct.create({
+        const product = new PapdiProduct({
             name,
             pricePerKg,
-            image: imagePath,
             ingredients,
+            imageData: req.file.buffer,
+            imageType: req.file.mimetype,
+            image: `/api/papdi/image/temp`, // Placeholder
         });
 
-        res.status(201).json(product);
+        const createdProduct = await product.save();
+
+        // Update the image URL with the actual ID
+        createdProduct.image = `/api/papdi/image/${createdProduct._id}`;
+        await createdProduct.save();
+
+        res.status(201).json(createdProduct);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -78,7 +97,9 @@ export const updatePapdi = async (req, res) => {
 
             // Update image if new one uploaded
             if (req.file) {
-                product.image = `/uploads/${req.file.filename}`;
+                product.imageData = req.file.buffer;
+                product.imageType = req.file.mimetype;
+                product.image = `/api/papdi/image/${product._id}`;
             }
 
             const updatedProduct = await product.save();

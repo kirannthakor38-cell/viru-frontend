@@ -16,6 +16,28 @@ export const getBusinessInfo = async (req, res) => {
     }
 };
 
+// @desc    Get business image
+// @route   GET /api/business/image/:id
+// @access  Public
+export const getBusinessImage = async (req, res) => {
+    try {
+        const info = await BusinessInfo.findOne();
+        if (!info) {
+            return res.status(404).json({ message: 'Business Info not found' });
+        }
+
+        const image = info.images.id(req.params.id);
+        if (!image || !image.data) {
+            return res.status(404).json({ message: 'Image not found' });
+        }
+
+        res.set('Content-Type', image.contentType || 'image/jpeg');
+        res.send(image.data);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // @desc    Update business info
 // @route   PUT /api/business
 // @access  Private/Admin
@@ -35,14 +57,21 @@ export const updateBusinessInfo = async (req, res) => {
 
             // Handle images if uploaded (expecting req.files array from multer)
             if (req.files && req.files.length > 0) {
-                const imagePaths = req.files.map(file => `/uploads/${file.filename}`);
-                // Combine existing images or replace? Let's just append for now, or maybe replace logic in frontend?
-                // For simplicity: Append new ones.
-                info.images = [...info.images, ...imagePaths];
-            }
+                // We need to save the info first to get IDs for new images if we wanted to generate URLs immediately,
+                // but we can also just save the buffers and update URLs after.
+                // However, Mongoose subdocuments get IDs on push.
 
-            // If images data is sent as text (e.g. to remove images), handle that too?
-            // For now, let's stick to adding images via upload or clearing all if requested (custom logic needed for rigorous management)
+                req.files.forEach(file => {
+                    const newImage = {
+                        data: file.buffer,
+                        contentType: file.mimetype,
+                        url: 'temp'
+                    };
+                    info.images.push(newImage);
+                    const pushedImage = info.images[info.images.length - 1];
+                    pushedImage.url = `/api/business/image/${pushedImage._id}`;
+                });
+            }
 
             const updatedInfo = await info.save();
             res.json(updatedInfo);
@@ -59,11 +88,11 @@ export const updateBusinessInfo = async (req, res) => {
 // @access  Private/Admin
 export const deleteBusinessImage = async (req, res) => {
     try {
-        const { imageUrl } = req.body; // Expecting { imageUrl: '/uploads/...' }
+        const { imageUrl } = req.body; // Expecting { imageUrl: '/api/business/image/...' }
         let info = await BusinessInfo.findOne();
 
         if (info) {
-            info.images = info.images.filter(img => img !== imageUrl);
+            info.images = info.images.filter(img => img.url !== imageUrl);
             await info.save();
             res.json(info);
         } else {

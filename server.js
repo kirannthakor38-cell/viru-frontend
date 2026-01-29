@@ -36,7 +36,7 @@ app.use(requestLogger);
 app.use(cors({
     origin: [
         'http://localhost:5173',              // Local Vite
-        'https://viru-frontend.vercel.app'    // Production frontend
+        'https://khushipapad.vercel.app'    // Production frontend
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -113,3 +113,4 @@ app.listen(PORT, () => {
         }
     }, interval);
 });
+
